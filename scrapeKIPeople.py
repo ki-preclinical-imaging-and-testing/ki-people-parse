@@ -74,7 +74,7 @@ def parse_publication_link(soup, verbose = False):
             _publink = _link['href']
     return _publink
         
-def parse_faculty_page(fn = "people/faculty/matthew-vander-heiden.html", verbose=False):
+def parse_person_page(fn="people/faculty/matthew-vander-heiden.html", verbose=False):
     _entry = {}
     soup = BeautifulSoup(Path(fn).read_text(), 'html.parser')
     try:
@@ -95,17 +95,17 @@ def parse_faculty_page(fn = "people/faculty/matthew-vander-heiden.html", verbose
     _entry['PubMed'] = parse_publication_link(soup, verbose=verbose)
     return soup, _entry
     
-def parse_all_faculty_pages(fp='people/faculty', verbose=False):
+def parse_all_people_in(fp='people/faculty', verbose=False):
     soups = {}
     cards = {}
     _p = Path(fp).absolute()
     for _i in _p.glob("*.html"):
-        soups[_i.name], cards[_i.name] = parse_faculty_page(_i)
+        soups[_i.name], cards[_i.name] = parse_person_page(_i)
         if verbose: print()
     return soups, cards
 
-def pull_faculty(fp='people/faculty', verbose=False):
-    soups, cards = parse_all_faculty_pages(fp=fp, verbose=verbose)
+def pull_faculty(fp='/mnt/data/www/ki.mit.edu/people/faculty', verbose=False):
+    soups, cards = parse_all_people_in(fp=fp, verbose=verbose)
     if verbose:
         print('Faculty','\n')
         for _k in soups.keys():
@@ -116,9 +116,10 @@ def pull_faculty(fp='people/faculty', verbose=False):
         faculty_info[_v['Name']] = _v
     return faculty_info
 
-def pull_clinical_investigators_and_research_fellows(fp='people/clinical-investigators-research-fellows', 
-                                                     verbose=False):
-    soups, cards = parse_all_faculty_pages(fp=fp, verbose=verbose)
+def pull_clinical_investigators_and_research_fellows(
+        fp='/mnt/data/www/ki.mit.edu/people/clinical-investigators-research-fellows', 
+        verbose=False):
+    soups, cards = parse_all_people_in(fp=fp, verbose=verbose)
     if verbose:
         print('Clinical Investigators and Research Fellows','\n')
         for _k in soups.keys():
@@ -129,8 +130,8 @@ def pull_clinical_investigators_and_research_fellows(fp='people/clinical-investi
         faculty_info[_v['Name']] = _v
     return faculty_info
 
-def pull_leadership(fp='people/leadership', verbose=False):
-    soups, cards = parse_all_faculty_pages(fp=fp, verbose=verbose)
+def pull_leadership(fp='/mnt/data/www/ki.mit.edu/people/leadership', verbose=False):
+    soups, cards = parse_all_people_in(fp=fp, verbose=verbose)
     if verbose:
         print('Leadership','\n')
         for _k in soups.keys():
@@ -149,3 +150,8 @@ def pull_all(verbose=False):
 
 def print_dict(d, indent=4):
     print(json.dumps(d, indent=indent))
+
+
+def write_dict(d, fn, indent=4):
+    with open(fn, 'w', encoding ='utf8') as _f:
+        json.dump(d, _f, ensure_ascii = False, indent=2)
