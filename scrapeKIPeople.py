@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 import glob
 import json
+import re
+
 
 def parse_contact(soup, verbose=False):
     _dcont = {}
@@ -142,11 +144,87 @@ def pull_leadership(fp='/mnt/data/www/ki.mit.edu/people/leadership', verbose=Fal
         faculty_info[_v['Name']] = _v
     return faculty_info
 
+def pull_administration_page(
+    fn = "/mnt/data/www/ki.mit.edu/people/administration.html",
+    verbose=False):
+    
+    _table = BeautifulSoup(Path(fn).read_text(), 
+                           'html.parser').select(
+        'table[class=administrationtable] > tbody')[0]
+    
+    _admin = {}
+    _group = ""
+    for _r in _table.find_all('tr'):
+        try:
+            _th = _r.find('th').text.strip()
+        except: 
+            continue
+
+        _td = []
+        for _tdi in _r.find_all('td'):
+            _td.append(_tdi.text.strip())
+        if not _td:
+            _group = _th
+            _admin[_group] = {}
+        else:
+            _admin[_group][_th] = {
+                "Title": _td[0],
+                "Office": _td[1],
+                "Phone": _td[2],
+                "Email": _td[3]
+            }
+    return _admin
+
+def pull_people_page(fn = "/mnt/data/www/ki.mit.edu/people.html",
+                     verbose = False):
+
+    soup = BeautifulSoup(Path(fn).read_text(), 'html.parser').select('div[class=peoplefilt-group]')
+
+    people_dict = {}
+    for _ss in soup:
+        _header = _ss.find('h2', class_="persontype-heading").text
+        _desc = _ss.find('p', class_="persontype-subheading").text
+        people_dict[_header] = {"Description": _desc}
+        for _p in _ss.find_all('div', class_="item person-teaser"):
+            _a = _p.find('h3').find('a')
+            _name = _a.text
+            _note = False
+            _passed = False
+            if '(' in _name and ')' in _name:
+                _ns = _name.split('(')
+                _name = _ns[0]
+                _note = _ns[1].split(')')[0]
+                # test for life dates vs other notes
+                _ld = re.search('^(18|19|20)\d\d[\-](19|20|21)\d\d$',_note)
+                if _ld:
+                    _passed = True
+                    _birth = _note.split('-')[0]
+                    _death = _note.split('-')[1]
+
+            people_dict[_header][_name] = {
+                "Interests": _p.find('p', class_='interests').text, 
+                "Page": "https://ki.mit.edu/" + _a['href']
+            }
+            if _note:
+                if _passed:
+                    people_dict[_header][_name]['Life Dates'] = {
+                        'Birth': _birth,
+                        'Death': _death
+                    }
+                else:
+                    people_dict[_header][_name]['Note'] = _note.capitalize()
+                    
+    return people_dict
+
+
 def pull_all(verbose=False):
     faculty = pull_faculty()
     clinical_investigators_and_research_fellows = pull_clinical_investigators_and_research_fellows()
     leadership = pull_leadership()
-    return leadership | faculty | clinical_investigators_and_research_fellows
+    people = pull_people_page()
+    scientists = faculty | clinical_investigators_and_research_fellows
+    admin = pull_administration_page()
+    return admin, leadership, scientists, people
 
 def print_dict(d, indent=4):
     print(json.dumps(d, indent=indent))
